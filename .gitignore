@@ -1,0 +1,36 @@
+# Dataset, private labels, and generated outputs
+data/
+datasets/
+labels/
+runs/
+outputs/
+results/
+ultralytics-config/
+*.cache
+*.jsonl
+/ground_truth_labels.json
+/split_manifest.json
+/data.yaml
+/train.txt
+/val.txt
+/test.txt
+*.jpg
+*.jpeg
+*.png
+*.mp4
+*.webm
+*_predictions.json
+
+# Local environments, checkpoints, exports, and credentials
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.pt
+*.pth
+*.onnx
+*.engine
+*.safetensors
+.env
+*.token
+*.key

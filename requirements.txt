@@ -1,0 +1,4 @@
+# Install a CUDA-enabled PyTorch build separately using the official selector:
+# https://pytorch.org/get-started/locally/
+ultralytics==8.4.198
+PyYAML>=6.0
