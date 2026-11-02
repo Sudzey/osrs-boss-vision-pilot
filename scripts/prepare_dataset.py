@@ -46,7 +46,7 @@ def split_random(samples: list[dict], seed: int) -> dict[str, list[dict]]:
 
 
 def split_grouped(samples: list[dict], seed: int) -> dict[str, list[dict]]:
-    """Greedily allocate whole source clips to approximate 70/20/10 image counts."""
+    """Allocate whole source clips, keeping at least one training example of each class."""
     groups: dict[str, list[dict]] = defaultdict(list)
     for item in samples:
         groups[item["source_file"]].append(item)
@@ -54,19 +54,38 @@ def split_grouped(samples: list[dict], seed: int) -> dict[str, list[dict]]:
         raise ValueError("Clip-grouped 70/20/10 requires at least three independent source clips")
 
     rng = random.Random(seed)
-    group_items = list(groups.items())
-    rng.shuffle(group_items)
+    sources = list(groups)
+    rng.shuffle(sources)
+    source_classes = {
+        source: {class_id for item in groups[source] for class_id, _ in item.get("rows", [])}
+        for source in sources
+    }
+    all_classes = set().union(*source_classes.values()) if source_classes else set()
+    train_sources: set[str] = set()
+    uncovered = set(all_classes)
+    while uncovered:
+        candidates = [source for source in sources if source not in train_sources]
+        if not candidates:
+            raise ValueError("Could not retain every class in the training split")
+        chosen = max(
+            candidates,
+            key=lambda source: (len(source_classes[source] & uncovered), len(groups[source])),
+        )
+        train_sources.add(chosen)
+        uncovered.difference_update(source_classes[chosen])
+
+    group_items = [(source, groups[source]) for source in sources if source not in train_sources]
     group_items.sort(key=lambda entry: len(entry[1]), reverse=True)
     target_counts = [len(samples) * ratio for ratio in RATIOS]
     split_names = ("train", "val", "test")
-    allocations: list[list[tuple[str, list[dict]]]] = [[], [], []]
-    counts = [0, 0, 0]
+    allocations: list[list[tuple[str, list[dict]]]] = [[(source, groups[source]) for source in sources if source in train_sources], [], []]
+    counts = [sum(len(groups[source]) for source in train_sources), 0, 0]
 
     for position, group in enumerate(group_items):
         remaining = len(group_items) - position
         empty = [i for i, bucket in enumerate(allocations) if not bucket]
         candidates = empty if remaining <= len(empty) else range(3)
-        chosen = min(candidates, key=lambda i: (counts[i] - target_counts[i]) / max(target_counts[i], 1))
+        chosen = min(candidates, key=lambda i: (counts[i] + len(group[1]) - target_counts[i]) / max(target_counts[i], 1))
         allocations[chosen].append(group)
         counts[chosen] += len(group[1])
 

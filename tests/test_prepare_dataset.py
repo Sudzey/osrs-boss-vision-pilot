@@ -74,6 +74,19 @@ class PrepareDatasetTests(unittest.TestCase):
         self.assertEqual(sum(len(samples_) for samples_ in splits.values()), len(samples))
         self.assertEqual(len(set.intersection(*group_sets)), 0)
 
+    def test_grouped_split_keeps_all_observed_classes_in_training(self) -> None:
+        samples = [
+            {"frame_id": "a", "source_file": "single-class-clip", "rows": [(0, None)]},
+            {"frame_id": "b", "source_file": "boss-clip-1", "rows": [(1, None)]},
+            {"frame_id": "c", "source_file": "boss-clip-2", "rows": [(1, None)]},
+            {"frame_id": "d", "source_file": "event-clip-1", "rows": [(7, None)]},
+            {"frame_id": "e", "source_file": "event-clip-2", "rows": [(7, None)]},
+        ]
+        splits = split_grouped(samples, 20261101)
+        train_classes = {class_id for item in splits["train"] for class_id, _ in item["rows"]}
+        all_classes = {class_id for item in samples for class_id, _ in item["rows"]}
+        self.assertEqual(train_classes, all_classes)
+
     def test_random_split_is_deterministic_and_complete(self) -> None:
         samples = load_samples(self.packet, self.labels_path)
         first = split_random(samples, 21)
